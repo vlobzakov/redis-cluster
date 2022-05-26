@@ -1,0 +1,187 @@
+type: update
+jpsVersion: 1.8.1
+name: Redis cluster logic
+decription: Redis cluster autoscaling logic
+
+onInstall:
+  - clusterInit
+    
+onAfterServiceScaleOut[nosqldb]:
+  - getRedisPasswd
+  - addNewNodeToCluster
+  - setClusterAnnounceIp: ${event.response.nodes.join(id,)}
+
+onBeforeScaleIn[nosqldb]:
+  - forEach(event.response.nodes):
+    - reshardBeforeScaleIn:
+        address: ${@i.address}
+  - forEach(event.response.nodes):
+      - cmd[${@i.id}]: |-
+          export REDISCLI_AUTH=$(cat /etc/redis.conf |grep '^requirepass'|awk '{print $2}');
+          yes yes| redis-cli --cluster del-node ${nodes.nosqldb.master.address}:6379 $(redis-cli cluster nodes|grep '${@i.address}:6379'|awk '{print $1}')
+        user: root
+        sayYes: no
+  - rebalanceCluster
+  
+onBeforeMigrate:
+  - saveCurrentIpAddress
+
+onBeforeClone:
+  - saveCurrentIpAddress
+
+onAfterMigrate:
+  - setClusterAnnounceIp: ${nodes.nosqldb.join(id,)}
+  - updateIpAddresses
+  
+onAfterAttachExtIp[nosqldb]:
+  - setClusterAnnounceIp: ${nodes.nosqldb.join(id,)}
+  
+onBeforeDetachExtIp[nosqldb]:
+  - setClusterAnnounceIp: ${nodes.nosqldb.join(id,)}
+ 
+onAfterSetExtIpCount[nosqldb]:
+  - setClusterAnnounceIp: ${nodes.nosqldb.join(id,)}
+  
+onAfterResetNodePassword[nosqldb]:
+  - getRedisPasswd
+  - setMasterAuth: ${nodes.nosqldb.join(id,)}
+  
+onAfterResetServicePassword[nosqldb]:
+  - getRedisPasswd
+  - setMasterAuth: ${nodes.nosqldb.join(id,)}
+  
+onAfterClone:
+  - script: delete MANIFEST.id; return {result:0, jps:MANIFEST};
+  - install: ${response.jps}
+    envName: ${event.response.env.envName}
+    settings:
+      nodeGroup: nosqldb
+      clone: true
+
+actions:
+  clusterInit:
+    - if (!${settings.clone:false}):
+      - prepareClusterNode: ${nodes.nosqldb.join(id,)}
+      - cmd[${nodes.nosqldb.master.id}]: |-
+          export REDISCLI_AUTH=$(cat /etc/redis.conf |grep '^requirepass'|awk '{print $2}');
+          yes yes| redis-cli --cluster create $(echo ${nodes.nosqldb.join(address,)} | sed 's/,/:6379 /g'):6379 --cluster-replicas 1
+        user: root
+        sayYes: no
+      - rebalanceCluster
+      - cmd[nosqldb]: jem service stop
+      - forEach(nodes.nosqldb):
+        - cmd[${@i.id}]:
+            sed -i '/^cluster-announce-ip/d' /etc/redis.conf;
+            if ip a|grep -q eth0; then INTERFACE="eth0"; else INTERFACE="venet0"; fi;
+            echo "cluster-announce-ip $(ip a | grep -A1 ${INTERFACE} | grep inet | awk '{print $2}'| sed 's/\/[0-9]*//g' | head -n 2|tail -n 1)" >> /etc/redis.conf;
+          user: root
+          sayYes: no
+        - cmd[${@i.id}]: if ip a|grep -q eth0; then INTERFACE="eth0"; else INTERFACE="venet0"; fi; ip a | grep -A1 ${INTERFACE} | grep inet | awk '{print $2}'| sed 's/\/[0-9]*//g' | head -n 2|tail -n 1;
+          user: root
+        - cmd[nosqldb]: sed -i 's/${@i.address}/${response.out}/'  /var/lib/redis/nodes.conf 
+          user: root
+      - cmd[nosqldb]: jem service start;
+    - else:
+      - cmd[nosqldb]: jem service stop
+      - forEach(nodes.nosqldb):
+        - cmd[${@i.id}]:
+            sed -i '/^cluster-announce-ip/d' /etc/redis.conf;
+            if ip a|grep -q eth0; then INTERFACE="eth0"; else INTERFACE="venet0"; fi;
+            echo "cluster-announce-ip $(ip a | grep -A1 venet0 | grep inet | awk '{print $2}'| sed 's/\/[0-9]*//g' | head -n 2|tail -n 1)" >> /etc/redis.conf;
+          user: root
+          sayYes: no
+        - cmd[${@i.id}]: cat /root/.previous_ip
+          user: root
+        - cmd[nosqldb]: sed -i 's/${response.out}/${@i.address}/'  /var/lib/redis/nodes.conf 
+          user: root
+      - cmd[nosqldb]: jem service start;
+
+  getRedisPasswd:
+    - cmd[${nodes.nosqldb.master.id}]: cat /etc/redis.conf |grep ^requirepass|awk '{print $2}'
+        
+  prepareClusterNode:
+    - getRedisPasswd
+    - cmd[${this}]:
+        sed -i 's/^loglevel notice/loglevel warning/' /etc/redis.conf;
+        jem passwd set -p ${response.out};
+        echo -e "cluster-enabled yes\ncluster-config-file nodes.conf\ncluster-node-timeout 5000\nappendonly yes\nmasterauth ${response.out}" >> /etc/redis.conf;
+        jem service restart;
+      user: root
+      
+  reshardAfterScaleOut:
+    - cmd[${this.id}]:
+        export REDISCLI_AUTH=$(cat /etc/redis.conf |grep '^requirepass'|awk '{print $2}');
+        export NEW_NODE_ID=$(redis-cli cluster nodes|grep ${this.address}|grep master|awk '{print $1}');
+        export n=$(redis-cli cluster nodes|grep master|wc -l);
+        export SHARDS_NUM=$(( 16384 / ${n} ));
+        if [ ! -z "${NEW_NODE_ID}" ]; then redis-cli --cluster reshard ${this.address}:6379 --cluster-from all --cluster-to ${NEW_NODE_ID} --cluster-slots ${SHARDS_NUM} --cluster-yes; else true; fi;
+      user: root
+      sayYes: no
+      
+  reshardBeforeScaleIn:
+    - cmd[${nodes.nosqldb.master.id}]:
+        export REDISCLI_AUTH=$(cat /etc/redis.conf |grep '^requirepass'|awk '{print $2}');
+        export SHARDS_NUM=$(redis-cli --cluster check ${this.address}:6379|grep '^${this.address}:6379'|awk '{print $7}');
+        export OLD_NODE_ID=$(redis-cli cluster nodes|grep ${this.address}:6379|grep master|awk '{print $1}');
+        export MASTER_NODE_ID=$(redis-cli cluster nodes|grep master|awk '{print $1}'|grep -v $OLD_NODE_ID|head -n 1);
+        if [ ! -z "${SHARDS_NUM}" ]; then redis-cli --cluster reshard ${nodes.nosqldb.master.address}:6379 --cluster-from ${OLD_NODE_ID} --cluster-to ${MASTER_NODE_ID} --cluster-slots ${SHARDS_NUM} --cluster-yes; else true; fi;
+      user: root
+      sayYes: no
+      
+  addNewNodeToCluster:
+    - prepareClusterNode: ${event.response.nodes.join(id,)}
+    - forEach(event.response.nodes):
+        - cmd[${nodes.nosqldb.master.id}]: |-
+            export REDISCLI_AUTH=$(cat /etc/redis.conf |grep '^requirepass'|awk '{print $2}');
+            export n=$(redis-cli cluster nodes|wc -l);
+            if [ $(expr $n % 2) == 0 ]; then export CL_SLAVE=""; else export CL_SLAVE="--cluster-slave"; fi;
+            yes yes| redis-cli --cluster add-node ${@i.address}:6379 ${nodes.nosqldb.master.address}:6379 ${CL_SLAVE};
+          user: root
+          sayYes: no
+    - forEach(event.response.nodes):
+        - reshardAfterScaleOut: 
+            id: ${@i.id}
+            address: ${@i.address}
+    - rebalanceCluster
+
+  saveCurrentIpAddress:
+    - cmd[nosqldb]:
+        if ip a|grep -q eth0; then INTERFACE="eth0"; else INTERFACE="venet0"; fi;
+        ip a | grep -A1 ${INTERFACE} | grep inet | awk '{print $2}'| sed 's/\/[0-9]*//g' | head -n 2|tail -n 1 > /root/.previous_ip
+      user: root
+      sayYes: no
+
+  updateIpAddresses:
+    - cmd[nosqldb]: jem service stop
+    - forEach(nodes.nosqldb):
+        - cmd[${@i.id}]: cat /root/.previous_ip
+          user: root
+        - cmd[nosqldb]: sed -i 's/${response.out}/${@i.address}/'  /var/lib/redis/nodes.conf 
+          user: root
+    - cmd[nosqldb]: jem service start
+    - cmd[nosqldb]: rm -f /root/.previous_ip
+      user: root
+    
+  rebalanceCluster:
+    - cmd[${nodes.nosqldb.master.id}]:
+        export REDISCLI_AUTH=$(cat /etc/redis.conf |grep '^requirepass'|awk '{print $2}');
+        redis-cli --cluster rebalance ${nodes.nosqldb.master.address}:6379;
+      user: root
+      
+  setClusterAnnounceIp:
+    - cmd[${this}]:
+        jem service stop;
+        sed -i '/^cluster-announce-ip/d' /etc/redis.conf;
+        if ip a|grep -q eth0; then INTERFACE="eth0"; else INTERFACE="venet0"; fi;
+        echo "cluster-announce-ip $(ip a | grep -A1 ${INTERFACE} | grep inet | awk '{print $2}'| sed 's/\/[0-9]*//g' | head -n 2|tail -n 1)" >> /etc/redis.conf;
+        jem service start;
+      user: root
+      sayYes: no
+      
+  setMasterAuth:
+    - getRedisPasswd
+    - cmd[${this}]:
+        sed -i '/^masterauth/d' /etc/redis.conf;
+        echo "masterauth ${response.out}" >> /etc/redis.conf;
+        jem service restart;
+      user: root

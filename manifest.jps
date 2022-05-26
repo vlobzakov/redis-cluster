@@ -1,0 +1,65 @@
+type: install
+jpsVersion: 1.8.1
+name: Redis cluster
+decription: Redis cluster topology
+id: redis-cluster
+targetEditions: any
+logo: https://github.com/jelastic/icons/raw/master/redis/jelastic/icons/logo_32x32.png
+description: |
+  Redis active-active cluster
+baseUrl: https://raw.githubusercontent.com/jelastic-jps/redis-cluster/main
+
+permanent: true
+
+globals:
+  redisPswd: ${fn.password}
+
+settings:
+  fields:
+    - type: spinner
+      name: nodesCount
+      caption: Nodes count
+      min: 6
+      max: 12
+      increment: 2
+    - name: autoscaling
+      type: checkbox
+      caption: Enable Horizontal Auto-Scaling
+    - name: externalIpAddresses
+      type: checkbox
+      caption: Enable External IP Addresses for cluster nodes
+
+nodes:
+  - cloudlets: 10
+    count: ${settings.nodesCount}
+    nodeType: redis
+    skipNodeEmails: true
+    diskLimit: 50
+    extip: ${settings.externalIpAddresses}
+
+onInstall:
+  - if (${settings.autoscaling}): autoscaling
+  - cmd[nosqldb]: jem passwd set -p ${globals.redisPswd}
+    user: root
+  - install:
+      jps: "${baseUrl}/addons/auto-clustering/auto-cluster.jps?_r=${fn.random}"
+      envName: "${env.envName}"
+      nodeGroup: nosqldb
+      settings:
+        autoscaling: ${settings.autoscaling}
+        
+actions:
+  autoscaling:
+    script: ${baseUrl}/scripts/autoscaling-triggers.js?_r=${fn.random}
+    params:
+      nodeGroup: nosqldb
+      upLimit: '12'
+      downLimit: "${settings.nodesCount}"
+      envName: "${env.envName}"
+
+success: |
+  Below you will find your admin panel link, username and password.
+  
+  Admin panel URL: [http://node${nodes.nosqldb.master.id}-${env.domain}](http://node${nodes.nosqldb.master.id}-${env.domain})  
+  Admin name: admin  
+  Password: ${globals.redisPswd}  
