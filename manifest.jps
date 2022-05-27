@@ -4,9 +4,9 @@ name: Redis cluster
 decription: Redis cluster topology
 id: redis-cluster
 targetEditions: any
-logo: https://github.com/jelastic/icons/raw/master/redis/jelastic/icons/logo_32x32.png
+logo: https://github.com/jelastic-jps/redis-cluster/blob/main/images/redis-cluster.png?raw=true
 description: |
-  Redis active-active cluster
+  High performance and highly available scalable Redis cluster with horizontal data sharding. Each Primary node is complemented with Secondary one to ensure reads load distribution and autorecovery if the Primary goes down.
 baseUrl: https://raw.githubusercontent.com/jelastic-jps/redis-cluster/main
 
 permanent: true
