@@ -10,8 +10,9 @@ onAfterServiceScaleOut[nosqldb]:
   - getRedisPasswd
   - addNewNodeToCluster
   - setClusterAnnounceIp: ${event.response.nodes.join(id,)}
-
-onBeforeScaleIn[nosqldb]:
+  
+onBeforeRemoveNode[nosqldb]:
+  - if (nodes.nosqldb.length == 6): stopEvent
   - forEach(event.response.nodes):
     - reshardBeforeScaleIn:
         address: ${@i.address}
