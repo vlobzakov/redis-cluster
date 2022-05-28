@@ -11,8 +11,7 @@ onAfterServiceScaleOut[nosqldb]:
   - addNewNodeToCluster
   - setClusterAnnounceIp: ${event.response.nodes.join(id,)}
   
-onBeforeRemoveNode[nosqldb]:
-  - if (nodes.nosqldb.length == 6): stopEvent
+onBeforeScaleIn[nosqldb]:
   - forEach(event.response.nodes):
     - reshardBeforeScaleIn:
         address: ${@i.address}
