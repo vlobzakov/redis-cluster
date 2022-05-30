@@ -1,17 +1,19 @@
 //@auth
 //@req(envName, nodeGroup, upLimit, downLimit)
-var SAME_NODES = "environment.maxsamenodescount",
-    MAX_NODES = "environment.maxnodescount",
+var perEnv = "environment.maxnodescount",
+    perNodeGroup = "environment.maxsamenodescount",
     nMaxSameNodes = 16;
 
 var hasCollaboration = (parseInt('${fn.compareEngine(7.0)}', 10) >= 0),
     q = [];
 
 if (hasCollaboration) {
-    q = JSON.parse('${quota.data}');
-    q = [ q[SAME_NODES], q[MAX_NODES] ];
+    q = [
+        { quota : { name: perEnv }, value: parseInt('${quota.environment.maxnodescount}', 10) },
+        { quota : { name: perNodeGroup }, value: parseInt('${quota.environment.maxsamenodescount}', 10) }
+    ];
 } else {
-    q = jelastic.billing.account.GetQuotas(MAX_NODES + ";" + SAME_NODES ).array || [];
+    q = jelastic.billing.account.GetQuotas(perEnv + ";" + perNodeGroup).array;
 }
 
 nMaxSameNodes = Math.min(q[0].value, q[1].value);
@@ -21,8 +23,8 @@ for (var i = 0, n = q.length; i < n; i++) {
   value = q[i].value;
 
   if (nMaxSameNodes >= value) {
-    if (name == MAX_NODES) nMaxSameNodes = value ? value - 1 : 1;
-      else if (name == SAME_NODES) nMaxSameNodes = value;
+    if (name == perEnv) nMaxSameNodes = value ? value - 1 : 1;
+      else if (name == perNodeGroup) nMaxSameNodes = value;
   }
 }
 
