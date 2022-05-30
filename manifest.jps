@@ -15,20 +15,24 @@ globals:
   redisPswd: ${fn.password}
   
 onBeforeInit: | 
-  var SAME_NODES = "environment.maxsamenodescount",
-    MAX_NODES = "environment.maxnodescount",
+  var perEnv = "environment.maxnodescount",
+    perNodeGroup = "environment.maxsamenodescount",
     minnodescount = 6, markup = null;
     
-    var hasCollaboration = (parseInt('${fn.compareEngine(7.0)}', 10) >= 0),
-      q = [];
-
-    if (hasCollaboration) {
-      q = JSON.parse('${quota.data}');
-      q = [ q[SAME_NODES], q[MAX_NODES] ];
+  var hasCollaboration = (parseInt('${fn.compareEngine(7.0)}', 10) >= 0),
+    q = [];
+      
+  if (hasCollaboration) {
+  q = [
+        { quota : { name: perEnv }, value: parseInt('${quota.environment.maxnodescount}', 10) },
+        { quota : { name: perNodeGroup }, value: parseInt('${quota.environment.maxsamenodescount}', 10) }
+    ];
+        group = { groupType: '${account.groupType}' };
     } else {
-      q = jelastic.billing.account.GetQuotas(MAX_NODES + ";" + SAME_NODES).array || [];
-    }
-    
+        q = jelastic.billing.account.GetQuotas(perEnv + ";" + perNodeGroup).array;
+        group = jelastic.billing.account.GetAccount(appid, session);
+  }
+  
   var max = minnodescount;
   for (var i = 0; i < q.length; i++){
       if ( q[i].value < minnodescount) {
