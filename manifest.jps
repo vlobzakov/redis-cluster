@@ -36,7 +36,7 @@ onBeforeInit: |
   var max = minnodescount;
   for (var i = 0; i < q.length; i++){
       if ( q[i].value < minnodescount) {
-          markup = "Quota limits: " + q[i].quota.name + " = " + q[i].value + ". Please upgrade your account.";
+          markup = "Quota limits: " + q[i].quota.name + " = " + q[i].value + ". Please upgrade your account or contact us to extend the possibilities.";
           break;
       } else if (max < q[i].value) {
           max = q[i].value;
@@ -47,7 +47,7 @@ onBeforeInit: |
   }
   var resp = {result: 0, settings: {"fields":[{"type":"spinner","name":"nodesCount","caption":"Nodes count","min":6,"max":12,"increment":2},{"name":"autoscaling","type":"checkbox","caption":"Enable Horizontal Auto-Scaling"},{"name":"externalIpAddresses","type":"checkbox","caption":"Enable External IP Addresses for cluster nodes"}]}};
   if (markup) {
-      resp.settings.submitType = "upgrade";
+      resp.settings.submitType = (group == "trial") ? "upgrade" : "support";
       resp.settings.fields.push(
           {"type": "displayfield", "cls": "warning", "height": 30, "hideLabel": true, "markup": markup},
           {"type": "compositefield","height": 0,"hideLabel": true,"width": 0,"items": [{"height": 0,"type": "string","required": true}]}
