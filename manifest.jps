@@ -46,7 +46,8 @@ onBeforeInit: |
       }
   }
   var resp = {result: 0, settings: {"fields":[{"type":"spinner","name":"nodesCount","caption":"Nodes count","min":6,"max":12,"increment":2},{"name":"autoscaling","type":"checkbox","caption":"Enable Horizontal Auto-Scaling"},{"name":"externalIpAddresses","type":"checkbox","caption":"Enable External IP Addresses for cluster nodes"}]}};
-  if (markup) { 
+  if (markup) {
+      resp.settings.submitType = "upgrade";
       resp.settings.fields.push(
           {"type": "displayfield", "cls": "warning", "height": 30, "hideLabel": true, "markup": markup},
           {"type": "compositefield","height": 0,"hideLabel": true,"width": 0,"items": [{"height": 0,"type": "string","required": true}]}
