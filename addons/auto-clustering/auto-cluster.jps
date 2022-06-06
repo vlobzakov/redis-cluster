@@ -24,7 +24,7 @@ onBeforeScaleIn[nosqldb]:
           export REDISCLI_AUTH=$(cat /etc/redis.conf |grep '^requirepass'|awk '{print $2}');
           if ip a|grep -q eth0; then INTERFACE="eth0"; else INTERFACE="venet0"; fi;
           ADDR_TO_DEL=$(ip a | grep -A1 ${INTERFACE} | grep inet | awk '{print $2}'| sed 's/\/[0-9]*//g' | head -n 2|tail -n 1);
-          yes yes| redis-cli --cluster del-node ${nodes.nosqldb.master.address}:6379 $(redis-cli cluster nodes|grep '${ADDR_TO_DEL}:6379'|awk '{print $1}')
+          yes yes| redis-cli --cluster del-node ${nodes.nosqldb.master.address}:6379 $(redis-cli cluster nodes|grep "${ADDR_TO_DEL}:6379"|awk '{print $1}')
         user: root
         sayYes: no
   - rebalanceCluster
