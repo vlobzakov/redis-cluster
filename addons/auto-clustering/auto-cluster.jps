@@ -159,9 +159,15 @@ actions:
   updateIpAddresses:
     - cmd[nosqldb]: jem service stop
     - forEach(nodes.nosqldb):
+        - cmd[${@i.id}]: |-
+            if ip a|grep -q eth0; then INTERFACE="eth0"; else INTERFACE="venet0"; fi;
+            ip a | grep -A1 ${INTERFACE} | grep inet | awk '{print $2}'| sed 's/\/[0-9]*//g' | head -n 2|tail -n 1;
+          user: root
+        - setGlobals:  
+            newIpAddress: ${response.out}
         - cmd[${@i.id}]: cat /root/.previous_ip
           user: root
-        - cmd[nosqldb]: sed -i 's/${response.out}/${@i.address}/'  /var/lib/redis/nodes.conf 
+        - cmd[nosqldb]: sed -i 's/${response.out}/${globals.newIpAddress}/'  /var/lib/redis/nodes.conf 
           user: root
     - cmd[nosqldb]: jem service start
     - cmd[nosqldb]: rm -f /root/.previous_ip
