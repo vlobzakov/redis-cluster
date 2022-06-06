@@ -152,8 +152,7 @@ actions:
 
   saveCurrentIpAddress:
     - cmd[nosqldb]:
-        if ip a|grep -q eth0; then INTERFACE="eth0"; else INTERFACE="venet0"; fi;
-        ip a | grep -A1 ${INTERFACE} | grep inet | awk '{print $2}'| sed 's/\/[0-9]*//g' | head -n 2|tail -n 1 > /root/.previous_ip
+        cat /etc/redis.conf |grep '^cluster-announce-ip'|awk '{print $2}' > /root/.previous_ip
       user: root
       sayYes: no
 
