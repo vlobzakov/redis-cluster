@@ -126,7 +126,8 @@ actions:
         export SHARDS_NUM=$(redis-cli --cluster check ${this.address}:6379|grep '^${this.address}:6379'|awk '{print $7}');
         export OLD_NODE_ID=$(redis-cli cluster nodes|grep ${this.address}:6379|grep master|awk '{print $1}');
         export MASTER_NODE_ID=$(redis-cli cluster nodes|grep master|awk '{print $1}'|grep -v $OLD_NODE_ID|head -n 1);
-        if [ ! -z "${SHARDS_NUM}" ]; then redis-cli --cluster reshard ${nodes.nosqldb.master.address}:6379 --cluster-from ${OLD_NODE_ID} --cluster-to ${MASTER_NODE_ID} --cluster-slots ${SHARDS_NUM} --cluster-yes; else true; fi;
+        export MASTER_NODE_ADDR=$(ip a | grep -A1 venet0 | grep inet | awk '{print $2}'| sed 's/\/[0-9]*//g' | head -n 2|tail -n 1);
+        if [ ! -z "${SHARDS_NUM}" ]; then redis-cli --cluster reshard ${MASTER_NODE_ADDR}:6379 --cluster-from ${OLD_NODE_ID} --cluster-to ${MASTER_NODE_ID} --cluster-slots ${SHARDS_NUM} --cluster-yes; else true; fi;
       user: root
       sayYes: no
       
