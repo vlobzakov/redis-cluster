@@ -16,15 +16,8 @@ onBeforeScaleIn[nosqldb]:
     - cmd[${@i.id}]: |-
         ip a | grep -A1 venet0 | grep inet | awk '{print $2}'| sed 's/\/[0-9]*//g' | head -n 2|tail -n 1;
       user: root
-    - reshardBeforeScaleIn:
+    - reshardAndRemoveBeforeScaleIn:
         address: ${response.out}
-  - forEach(event.response.nodes):
-      - cmd[${@i.id}]: |-
-          export REDISCLI_AUTH=$(cat /etc/redis.conf |grep '^requirepass'|awk '{print $2}');
-          ADDR_TO_DEL=$(ip a | grep -A1 venet0 | grep inet | awk '{print $2}'| sed 's/\/[0-9]*//g' | head -n 2|tail -n 1);
-          yes yes| redis-cli --cluster del-node ${nodes.nosqldb.master.address}:6379 $(redis-cli cluster nodes|grep "${ADDR_TO_DEL}:6379"|awk '{print $1}')
-        user: root
-        sayYes: no
   - rebalanceCluster
   
 onBeforeMigrate:
@@ -117,17 +110,25 @@ actions:
         export n=$(redis-cli cluster nodes|grep master|wc -l);
         export SHARDS_NUM=$(( 16384 / ${n} ));
         if [ ! -z "${NEW_NODE_ID}" ]; then redis-cli --cluster reshard ${this.address}:6379 --cluster-from all --cluster-to ${NEW_NODE_ID} --cluster-slots ${SHARDS_NUM} --cluster-yes; else true; fi;
+        redis-cli --cluster check ${this.address}:6379 || redis-cli --cluster fix ${this.address}:6379;
       user: root
       sayYes: no
       
-  reshardBeforeScaleIn:
-    - cmd[${nodes.nosqldb.master.id}]:
+  reshardAndRemoveBeforeScaleIn:
+    - cmd[${nodes.nosqldb.master.id}]: |-
         export REDISCLI_AUTH=$(cat /etc/redis.conf |grep '^requirepass'|awk '{print $2}');
-        export SHARDS_NUM=$(redis-cli --cluster check ${this.address}:6379|grep '^${this.address}:6379'|awk '{print $7}');
-        export OLD_NODE_ID=$(redis-cli cluster nodes|grep ${this.address}:6379|grep master|awk '{print $1}');
-        export MASTER_NODE_ID=$(redis-cli cluster nodes|grep master|awk '{print $1}'|grep -v $OLD_NODE_ID|head -n 1);
         export MASTER_NODE_ADDR=$(ip a | grep -A1 venet0 | grep inet | awk '{print $2}'| sed 's/\/[0-9]*//g' | head -n 2|tail -n 1);
-        if [ ! -z "${SHARDS_NUM}" ]; then redis-cli --cluster reshard ${MASTER_NODE_ADDR}:6379 --cluster-from ${OLD_NODE_ID} --cluster-to ${MASTER_NODE_ID} --cluster-slots ${SHARDS_NUM} --cluster-yes; else true; fi;
+        redis-cli --cluster check ${MASTER_NODE_ADDR}:6379 || redis-cli --cluster fix ${MASTER_NODE_ADDR}:6379;
+        export SHARDS_NUM=$(redis-cli --cluster check ${this.address}:6379|grep '^${this.address}:6379'|awk '{print $7}');
+        export OLD_NODE_ID=$(redis-cli cluster nodes|grep ${this.address}:6379|awk '{print $1}');
+        export MASTER_NODE_ID=$(redis-cli cluster nodes|grep master|awk '{print $1}'|grep -v $OLD_NODE_ID|head -n 1);
+        if [ ! -z "${SHARDS_NUM}" ]; then 
+            redis-cli --cluster reshard ${MASTER_NODE_ADDR}:6379 --cluster-from ${OLD_NODE_ID} --cluster-to ${MASTER_NODE_ID} --cluster-slots ${SHARDS_NUM} --cluster-yes; 
+            export HOST_LIST_AFTER_REMOVE=$(redis-cli cluster nodes|grep -v ${this.address}|awk '{print $2}'|awk -F ':' '{print $1}'|tr '\n' ' ');
+            for i in ${HOST_LIST_AFTER_REMOVE}; do redis-cli -h ${i} cluster forget ${OLD_NODE_ID}; done; 
+        else 
+            redis-cli --cluster del-node ${MASTER_NODE_ADDR}:6379 ${OLD_NODE_ID} --cluster-yes; 
+        fi;
       user: root
       sayYes: no
       
@@ -173,6 +174,7 @@ actions:
     - cmd[${nodes.nosqldb.master.id}]:
         export REDISCLI_AUTH=$(cat /etc/redis.conf |grep '^requirepass'|awk '{print $2}');
         redis-cli --cluster rebalance ${nodes.nosqldb.master.address}:6379;
+        redis-cli --cluster check ${nodes.nosqldb.master.address}:6379 || redis-cli --cluster fix ${nodes.nosqldb.master.address}:6379;
       user: root
       
   setClusterAnnounceIp:
