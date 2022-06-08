@@ -38,7 +38,7 @@ var types = [{
     scaleUpLoadPeriod: 5,
     scaleDownValue: 40,
     scaleDownLimit: downLimit,
-    scaleDownLoadPeriod: 5
+    scaleDownLoadPeriod: 15
 }, {
     resourceType: "CPU",
     scaleUpValue: 70,
@@ -46,7 +46,7 @@ var types = [{
     scaleUpLoadPeriod: 5,
     scaleDownValue: 40,
     scaleDownLimit: downLimit,
-    scaleDownLoadPeriod: 5
+    scaleDownLoadPeriod: 15
 }];
 
 var cleanOldTriggers = true;
