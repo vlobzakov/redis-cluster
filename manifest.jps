@@ -74,7 +74,7 @@ nodes:
     nodeType: redis
     skipNodeEmails: true
     diskLimit: 50
-    extip: ${settings.externalIpAddresses}
+    extip: ${settings.externalIpAddresses:false}
 
 onInstall:
   - if (${settings.autoscaling}): autoscaling
