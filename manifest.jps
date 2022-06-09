@@ -9,6 +9,9 @@ description: |
   High performance and highly available scalable Redis cluster with horizontal data sharding. Each Primary node is complemented with Secondary one to ensure reads load distribution and autorecovery if the Primary goes down.
 baseUrl: https://raw.githubusercontent.com/jelastic-jps/redis-cluster/main
 
+categories:
+  - apps/clusters
+
 permanent: true
 
 globals:
@@ -49,4 +52,4 @@ success: |
   
   Admin panel URL: [http://node${nodes.nosqldb.master.id}-${env.domain}](http://node${nodes.nosqldb.master.id}-${env.domain})  
   Admin name: admin  
-  Password: ${globals.redisPswd}  
+  Password: ${globals.redisPswd}
