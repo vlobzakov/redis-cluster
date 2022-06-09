@@ -16,8 +16,9 @@ permanent: true
 
 globals:
   redisPswd: ${fn.password}
-  
-onBeforeInit: scripts/onBeforeInit.js
+
+settings:
+  onBeforeInit: scripts/settingsOnBeforeInit.js
 
 nodes:
   - cloudlets: 10
