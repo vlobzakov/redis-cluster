@@ -138,10 +138,27 @@ actions:
         - cmd[${nodes.nosqldb.master.id}]: |-
             export REDISCLI_AUTH=$(cat /etc/redis.conf |grep '^requirepass'|awk '{print $2}');
             export n=$(redis-cli cluster nodes|wc -l);
-            if [ $(expr $n % 2) == 0 ]; then export CL_SLAVE=""; else export CL_SLAVE="--cluster-slave"; fi;
-            yes yes| redis-cli --cluster add-node ${@i.address}:6379 ${nodes.nosqldb.master.address}:6379 ${CL_SLAVE};
+            redis-cli -h ${nodes.nosqldb.master.address} cluster meet ${@i.address} 6379;
+            if [ $(expr $n % 2) != 0 ]; then
+                MASTERS_LIST=$(redis-cli cluster nodes|grep master|grep -v ${@i.address}:6379|awk '{print $2}'|awk -F ':' '{print $1}'|tr '\n' ' ')
+                for i in ${MASTERS_LIST}
+                do
+                   SLAVES_STRING=$(redis-cli -h $i INFO|grep ^slave[0-9])        
+                   if [[ -z "${SLAVES_STRING}" ]]; then
+                        TARGET_MASTER_ID=$(redis-cli cluster nodes|grep $i:6379|awk '{print $1}')
+                        break
+                    fi
+                done
+                retries=12
+                while [ $retries -gt 0 ]; do
+                    sleep 20
+                    NODES_LIST=$(redis-cli -h ${@i.address} cluster nodes|grep -v ERR)
+                    [ -n "${NODES_LIST}" ] && break
+                    let retries=${retries}-1
+                done
+                redis-cli -h ${@i.address} cluster replicate ${TARGET_MASTER_ID}
+            fi;
           user: root
-          sayYes: no
     - forEach(event.response.nodes):
         - reshardAfterScaleOut: 
             id: ${@i.id}
@@ -173,8 +190,8 @@ actions:
   rebalanceCluster:
     - cmd[${nodes.nosqldb.master.id}]:
         export REDISCLI_AUTH=$(cat /etc/redis.conf |grep '^requirepass'|awk '{print $2}');
-        redis-cli --cluster rebalance ${nodes.nosqldb.master.address}:6379;
         redis-cli --cluster check ${nodes.nosqldb.master.address}:6379 || redis-cli --cluster fix ${nodes.nosqldb.master.address}:6379;
+        redis-cli --cluster rebalance ${nodes.nosqldb.master.address}:6379;
       user: root
       
   setClusterAnnounceIp:
