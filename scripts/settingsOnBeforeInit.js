@@ -3,7 +3,7 @@
     ipEnabled = "environment.externalip.enabled",
     ipMaxCount = "environment.externalip.maxcount",
     ipPerNode = "environment.externalip.maxcount.per.node",
-    minnodescount = 6, markup = null;
+    minnodescount = 6, markup = null, extipmarkup = null;
     
   var hasCollaboration = (parseInt('${fn.compareEngine(7.0)}', 10) >= 0),
     q = [];
@@ -18,11 +18,7 @@
     ];
         group = { groupType: '${account.groupType}' };
     } else {
-        q.push(jelastic.billing.account.GetQuotas(perEnv).array[0]);
-        q.push(jelastic.billing.account.GetQuotas(perNodeGroup).array[0]);
-        q.push(jelastic.billing.account.GetQuotas(ipEnabled).array[0]);
-        q.push(jelastic.billing.account.GetQuotas(ipMaxCount).array[0]);
-        q.push(jelastic.billing.account.GetQuotas(ipPerNode).array[0]);
+        q = jelastic.billing.account.GetQuotas(perEnv + ";" + perNodeGroup + ";" + ipEnabled + ";" + ipMaxCount + ";" + ipPerNode).array;
         group = jelastic.billing.account.GetAccount(appid, session);
   }
   
@@ -44,11 +40,21 @@
   
   jps.settings.fields.push({"type":"spinner","name":"nodesCount","caption":"Nodes count","min":6,"max":12,"increment":2});
   jps.settings.fields.push({"name":"autoscaling","type":"checkbox","caption":"Enable Horizontal Auto-Scaling"});
+  jps.settings.fields.push({"name":"externalIpAddresses","type":"checkbox","caption":"Enable External IP Addresses for cluster nodes", "disabled": true}); 
 
   if (q[2].value != 0 && q[3].value > 5 && q[4].value > 0) {
-      jps.settings.fields.push(
-          {"name":"externalIpAddresses","type":"checkbox","caption":"Enable External IP Addresses for cluster nodes"}
-      ); 
+      jps.settings.fields[2].disabled = false;
+  } else {
+      extipmarkup = "Using of external IP is not possible because of such quota's values:";
+      if (q[2].value == 0){
+          extipmarkup = extipmarkup + " " + q[2].quota.name;
+      }
+      if (q[3].value < 6){
+          extipmarkup = extipmarkup + " " + q[3].quota.name;
+      }
+      if (q[4].value == 0){
+          extipmarkup = extipmarkup + " " + q[4].quota.name;
+      }
   };
   
   if (markup) {
@@ -57,7 +63,12 @@
           {"type": "displayfield", "cls": "warning", "height": 30, "hideLabel": true, "markup": markup},
           {"type": "compositefield","height": 0,"hideLabel": true,"width": 0,"items": [{"height": 0,"type": "string","required": true}]}
       ); 
-  } 
+  }
+  if (extipmarkup) {
+          jps.settings.fields.push(
+          {"type": "displayfield", "cls": "warning", "height": 30, "hideLabel": true, "markup": extipmarkup}
+      ); 
+  }
   return {
     result: 0,
     fields: jps.settings.fields
