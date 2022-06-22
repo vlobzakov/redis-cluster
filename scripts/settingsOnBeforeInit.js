@@ -18,7 +18,11 @@
     ];
         group = { groupType: '${account.groupType}' };
     } else {
-        q = jelastic.billing.account.GetQuotas(perEnv + ";" + perNodeGroup + ";" + ipEnabled + ";" + ipMaxCount + ";" + ipPerNode).array;
+        q.push(jelastic.billing.account.GetQuotas(perEnv).array[0]);
+        q.push(jelastic.billing.account.GetQuotas(perNodeGroup).array[0]);
+        q.push(jelastic.billing.account.GetQuotas(ipEnabled).array[0]);
+        q.push(jelastic.billing.account.GetQuotas(ipMaxCount).array[0]);
+        q.push(jelastic.billing.account.GetQuotas(ipPerNode).array[0]);
         group = jelastic.billing.account.GetAccount(appid, session);
   }
   
