@@ -42,12 +42,13 @@
   jps.settings = {};
   jps.settings.fields = [];
   
-  jps.settings.fields.push({"type":"spinner","name":"nodesCount","caption":"Nodes count","min":6,"max":12,"increment":2});
+  jps.settings.fields.push({"type":"spinner","name":"nodesCount","caption":"Nodes count","min":6,"max": max,"increment":2});
   jps.settings.fields.push({"name":"autoscaling","type":"checkbox","caption":"Enable Horizontal Auto-Scaling"});
   jps.settings.fields.push({"name":"externalIpAddresses","type":"checkbox","caption":"Enable External IP Addresses for cluster nodes", "disabled": true}); 
 
   if (q[2].value != 0 && q[3].value > 5 && q[4].value > 0) {
       jps.settings.fields[2].disabled = false;
+      extipmarkup = "Number of external IP's is limited to " + q[3].value + " by environment.externalip.maxcount quota.";
   } else {
       extipmarkup = "Using of external IP is not possible because of such quota's values:";
       if (q[2].value == 0){
