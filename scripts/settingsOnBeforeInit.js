@@ -26,7 +26,7 @@
         group = jelastic.billing.account.GetAccount(appid, session);
   }
   
-  var max = minnodescount;
+  var max = 12;
   for (var i = 0; i < 2; i++){
       if ( q[i].value < minnodescount) {
           markup = "Quota limits: " + q[i].quota.name + " = " + q[i].value + ". Please upgrade your account or contact us to extend the possibilities.";
