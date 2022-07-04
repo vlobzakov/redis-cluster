@@ -31,7 +31,7 @@
       if ( q[i].value < minnodescount) {
           markup = "Quota limits: " + q[i].quota.name + " = " + q[i].value + ". Please upgrade your account or contact us to extend the possibilities.";
           break;
-      } else if (max < q[i].value) {
+      } else if (max > q[i].value) {
           max = q[i].value;
             if (max % 2 != 0) {
                 max = --max;
