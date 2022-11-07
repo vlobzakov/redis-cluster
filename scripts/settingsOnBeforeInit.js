@@ -66,7 +66,7 @@
       jps.settings.submitType = (group == "trial") ? "upgrade" : "support";
       jps.settings.fields.push(
           {"type": "displayfield", "cls": "warning", "height": 30, "hideLabel": true, "markup": markup},
-          {"type": "compositefield","height": 0,"hideLabel": true,"width": 0,"items": [{"height": 0,"type": "string","required": true}]}
+          {"type": "compositefield", "cls": "x-form-text", "height": 0,"hideLabel": true,"width": 0,"items": [{"height": 0,"type": "string","required": true}]}
       ); 
   }
   if (extipmarkup) {
