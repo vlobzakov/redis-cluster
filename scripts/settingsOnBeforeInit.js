@@ -71,7 +71,7 @@
   }
   if (extipmarkup) {
           jps.settings.fields.push(
-          {"type": "displayfield", "cls": "warning", "height": 30, "hideLabel": true, "markup": extipmarkup}
+          {"type": "displayfield", "height": 30, "hideLabel": true, "markup": extipmarkup}
       ); 
   }
   return {
