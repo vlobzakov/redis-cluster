@@ -66,12 +66,12 @@
       jps.settings.submitType = (group == "trial") ? "upgrade" : "support";
       jps.settings.fields.push(
           {"type": "displayfield", "cls": "warning", "height": 30, "hideLabel": true, "markup": markup},
-          {"type": "compositefield", "cls": "warning", "height": 0,"hideLabel": true,"width": 0,"items": [{"height": 0,"type": "string","required": true}]}
+          {"type": "compositefield", "height": 0,"hideLabel": true,"width": 0,"items": [{"height": 0,"type": "string","required": true}]}
       ); 
   }
   if (extipmarkup) {
           jps.settings.fields.push(
-          {"type": "displayfield", "height": 30, "hideLabel": true, "markup": extipmarkup}
+          {"type": "displayfield", "cls": "warning", "height": 30, "hideLabel": true, "markup": extipmarkup}
       ); 
   }
   return {
