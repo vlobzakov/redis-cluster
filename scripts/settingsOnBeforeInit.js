@@ -48,7 +48,7 @@
 
   if (q[2].value != 0 && q[3].value > 5 && q[4].value > 0) {
       jps.settings.fields[2].disabled = false;
-      extipmarkup = "Number of external IP's is limited to " + q[3].value + " by environment.externalip.maxcount quota. Please take it into account in case of using the 'Enable external IP Addresses' option.";
+      extipmarkup = "Number of external IP's is limited to " + q[3].value + " by environment.externalip.maxcount quota. Please take it into account in case of using the 'Enable External IP Addresses' option.";
   } else {
       extipmarkup = "Using of public IP's is not possible because of such quota's values:";
       if (q[2].value == 0){
