@@ -51,5 +51,5 @@ Once the deployment is finished, you’ll see an appropriate success pop-up.
  The application is ready to use, just proceed to the cluster admin panel by respective URL and user credentials to do required configuration and customization.
 
 <p align="left"> 
-<img src="images/redis-commander.png" width="700">
+<img src="images/admin-panel.png" width="700">
 </p>
